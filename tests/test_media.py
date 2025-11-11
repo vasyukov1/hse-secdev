@@ -56,6 +56,7 @@ def test_create_media_success(client):
         "year": 2025,
         "kind": "film",
         "status": "completed",
+        "director": "Test Director",
         "description": (
             "A Love Tale is a 2025 English-language French gothic horror and "
             "romantic film written and directed by Luc Besson, based on the "
@@ -78,6 +79,7 @@ def test_media_list(client):
             "year": 2000 + i,
             "kind": "film",
             "status": "planned",
+            "director": f"Director {i}",
         }
         client.post("/media", json=payload)
     response = client.get("/media")
@@ -95,6 +97,7 @@ def test_get_media_success_and_404(client):
         "year": 2025,
         "kind": "course",
         "status": "watching",
+        "director": "Test Director",
         "description": "The course about Machine Learning by Eugeny Sokolov.",
     }
     res_create = client.post("/media", json=payload)
@@ -150,6 +153,7 @@ def test_delete_media_success_and_404(client):
         "year": 2025,
         "kind": "film",
         "status": "planned",
+        "director": "Formula 1 Director",
         "description": "Du Du Du DUUU Max Verstappen",
     }
     res_create = client.post("/media", json=payload)

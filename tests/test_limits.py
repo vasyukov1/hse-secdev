@@ -31,8 +31,8 @@ def test_valid_complex_json_accepted():
         "kind": "film",
         "status": "planned",
         "description": "A" * 500,
-        "genres": ["action", "adventure", "sci-fi"] * 10,
-        "director": "John " * 10 + "Doe",
+        "genres": ["action", "adventure", "sci-fi"],
+        "director": "John " * 5 + "Doe",
         "rating": 9.5,
         "duration": 120,
     }
