@@ -15,6 +15,9 @@ pip install -r requirements.txt -r requirements-dev.txt
 # Настройка pre-commit хуков
 pre-commit install
 
+# Запуск PostgreSQL
+brew services start postgresql
+
 # Запуск приложения
 uvicorn app.main:app --reload
 ```
@@ -92,10 +95,16 @@ Badge добавится автоматически после загрузки 
 
 ```json
 {
-  "name": "Название (1-255 символов)",
-  "year": год (1800-2050),
+  "name": "Название (1-255 символов, только разрешенные символы)",
+  "year": "год (1800-текущий год)",
   "kind": "film|course",
-  "status": "planned|watching|completed"
+  "status": "planned|watching|completed",
+  "director": "Режиссер (обязателен для фильмов)",
+  "rating": "рейтинг 0-10 (опционально)",
+  "description": "описание до 1000 символов",
+  "genres": "массив жанров (максимум 10)",
+  "duration": "продолжительность в минутах",
+  "url": "валидный URL (только http/https, запрещены внутренние адреса)"
 }
 ```
 
@@ -103,10 +112,18 @@ Badge добавится автоматически после загрузки 
 Все ошибки соответствуют стандарту RFC 7807:
 ```json
 {
-  "error": {
-    "code": "not_found",
-    "message": "item not found"
-  }
+  "type": "about:blank",
+  "title": "Validation Error",
+  "status": 422,
+  "detail": "Запрос содержит невалидные данные",
+  "correlation_id": "uuid-v4-идентификатор",
+  "errors": [
+    {
+      "loc": ["body", "year"],
+      "msg": "Year cannot be in the future",
+      "type": "value_error"
+    }
+  ]
 }
 ```
 
@@ -131,27 +148,40 @@ app/
 ├── models.py       # SQLAlchemy модели
 ├── schemas.py      # Pydantic схемы
 ├── db.py           # Настройка базы данных
-└── errors.py       # Обработка ошибок RFC 7807
+├── errors.py       # Обработка ошибок RFC 7807 с маскировкой PII
+└── file_utils.py   # Безопасная работа с файлами
 docs/
 └── adr/            # Архитектурные решения
     ├── ADR-001-rfc7807-error-handling.md
     ├── ADR-002-url-validation.md
     └── ADR-003-resource-limits.md
+└── security-nfr/
+    ├── NFR_BDD.md
+    ├── NFR_TRACEABILITY.md
+    └── NFR.md
+└── threat-model/
+    ├── DFD.md
+    ├── RISKS.md
+    └── STRIDE.md
 tests/              # Тесты
-└── test_media.py   # Тесты для медиа
+├── test_media.py   # Тесты для медиа
 ├── test_health.py  # Тесты health-чеков
 ├── test_errors.py  # Тесты обработки ошибок
-└── test_limits.py  # Тесты лимитов и безопасности
+├── test_limits.py  # Тесты лимитов и безопасности
+└── test_secure_coding.py  # Тесты безопасного кодирования
 ```
 
 ## Безопасность
 
 ### Реализованные меры безопасности
-- Валидация входных данных через Pydantic с кастомными валидаторами
-- RFC 7807 обработка ошибок с correlation_id для трассировки
-- Валидация URL с проверкой схем и запретом внутренних адресов
+- Валидация входных данных через Pydantic v2 с strict schema (extra='forbid')
+- RFC 7807 обработка ошибок с correlation_id для трассировки и маскировкой чувствительных данных
+- Валидация URL с проверкой схем, запретом внутренних адресов и ограничением длины
 - Лимиты запросов - максимальный размер 1MB
-- Безопасная обработка ошибок без раскрытия внутренней информации
+- Безопасная работа с файлами - MIME validation, лимиты размера (5MB), защита от path traversal
+- SQL параметризация через SQLAlchemy ORM
+- Безопасная сериализация JSON для Decimal, UUID, datetime
+- Защита от симлинков при работе с файловой системой
 
 ### Связь с требованиями
 - NFR-05 (Безопасность API эндпоинтов) - через валидацию и лимиты
@@ -162,5 +192,13 @@ tests/              # Тесты
 - R2 (SQL Injection) - через строгую валидацию входных данных
 - R4 (DoS атака) - через лимиты размера запросов
 - R10 (Недостаточное логирование) - через correlation_id в ошибках
+- Защита от path traversal, symlink атак, MIME spoofing
 
-См. также: `SECURITY.md`, `.pre-commit-config.yaml`, `.github/workflows/ci.yml`.
+### Тестирование безопасности
+- 7+ негативных тестов в test_secure_coding.py
+- Проверка SQL injection prevention
+- Тесты path traversal protection
+- Валидация MIME типов и размеров файлов
+- Проверка маскировки чувствительных данных
+
+См. также: `SECURITY.md`, `.pre-commit-config.yaml`, `.github/workflows/ci.yml`, `pyproject.toml`.
