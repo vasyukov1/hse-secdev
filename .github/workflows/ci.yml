@@ -50,7 +50,7 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: Dockerfile
-          configuration: .hadolint.yaml
+          config: .hadolint.yaml
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master

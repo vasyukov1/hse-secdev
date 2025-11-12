@@ -4,10 +4,11 @@ FROM python:3.11-slim AS build
 WORKDIR /app
 
 # Install build dependecies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gcc \
     python3-dev \
+    libmagic-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install dependecies
@@ -23,7 +24,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install runtime dependencies only
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libmagic1 \
     file \
