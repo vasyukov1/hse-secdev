@@ -1,11 +1,4 @@
-from fastapi.testclient import TestClient
-
-from app.main import app
-
-client = TestClient(app)
-
-
-def test_large_request_rejected():
+def test_large_request_rejected(client):
     """Test that large request bodies are rejected"""
     large_name = "x" * 1000000
 
@@ -23,7 +16,7 @@ def test_large_request_rejected():
         assert "detail" in data
 
 
-def test_valid_complex_json_accepted():
+def test_valid_complex_json_accepted(client):
     """Test that valid complex JSON is accepted"""
     complex_data = {
         "name": "Complex Film",
