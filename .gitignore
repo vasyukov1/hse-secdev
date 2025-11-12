@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+*/__pycache__
 *.py[cod]
 *.so
 *.egg-info/
@@ -18,3 +19,5 @@ build/
 .DS_Store
 # Attachments
 attachments/
+# DB
+*.db
