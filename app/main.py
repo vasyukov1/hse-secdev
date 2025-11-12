@@ -1,20 +1,32 @@
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime
+from decimal import Decimal
+from pathlib import Path
 from typing import List
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile, status
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy.orm import Session
 
 from . import models, schemas
 from .db import Base, SessionLocal, engine
-from .errors import ProblemDetailException, problem, problem_detail_exception_handler
+from .errors import (
+    ProblemDetailException,
+    problem,
+    problem_detail_exception_handler,
+    unhandled_exception_handler,
+)
+from .file_utils import FileSecurity
 
 app = FastAPI(
     title="Media Wishlist",
-    version="0.3.0",
+    version="0.4.0",
     max_upload_size=1_000_000,
 )
+
+ATTACHMENTS_DIR = Path("attachments")
+ATTACHMENTS_DIR.mkdir(exist_ok=True)
 
 # Add securoty middleware
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
@@ -37,6 +49,17 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+# Safe serialization
+def safe_json_serializer(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 
 @app.exception_handler(422)
@@ -148,3 +171,31 @@ def delete_media(media_id: uuid.UUID, db: Session = Depends(get_db)):
             title="Database Error",
             detail=str(e),
         )
+
+
+@app.post("/media/{media_id}/attachment", status_code=201)
+async def upload_attachment(
+    media_id: uuid.UUID, file: UploadFile = File(...), db: Session = Depends(get_db)
+):
+    media = db.query(models.Media).filter(models.Media.id == media_id).first()
+    if not media:
+        raise ProblemDetailException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            title="Not Found",
+            detail="Media item not found",
+        )
+
+    try:
+        filename = FileSecurity.secure_save_file(file, ATTACHMENTS_DIR, media_id, db)
+        return {"filename": filename, "status": "uploaded"}
+    except ProblemDetailException:
+        raise
+    except Exception as e:
+        raise ProblemDetailException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            title="Upload Error",
+            detail=str(e),
+        )
+
+
+app.add_exception_handler(Exception, unhandled_exception_handler)

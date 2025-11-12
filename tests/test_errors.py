@@ -55,6 +55,7 @@ def test_url_validation_success():
             "year": 2024,
             "kind": "film",
             "status": "planned",
+            "director": "Test Director",
             "url": "https://example.com/trailer",
         },
     )
@@ -71,6 +72,7 @@ def test_url_validation_invalid_scheme():
             "year": 2024,
             "kind": "film",
             "status": "planned",
+            "director": "Test Director",
             "url": "javascript:alert('xss')",
         },
     )
@@ -89,6 +91,7 @@ def test_url_validation_internal_host():
             "year": 2024,
             "kind": "film",
             "status": "planned",
+            "director": "Test Director",
             "url": "https://localhost/admin",
         },
     )
@@ -108,6 +111,7 @@ def test_url_validation_too_long():
             "year": 2024,
             "kind": "film",
             "status": "planned",
+            "director": "Test Director",
             "url": long_url,
         },
     )
