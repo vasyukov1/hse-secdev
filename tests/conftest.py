@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.main import Base, app, get_db
 
@@ -17,7 +18,9 @@ if str(ROOT) not in sys.path:
 @pytest.fixture(scope="session")
 def db_engine():
     engine = create_engine(
-        "sqlite:///./test.db", connect_args={"check_same_thread": False}
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
     yield engine
@@ -26,10 +29,15 @@ def db_engine():
 
 @pytest.fixture(scope="function")
 def db_session(db_engine):
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
-    session = SessionLocal()
+    connection = db_engine.connect()
+    transaction = connection.begin()
+    session = sessionmaker(autocommit=False, autoflush=False, bind=connection)()
+
     yield session
+
     session.close()
+    transaction.rollback()
+    connection.close()
 
 
 @pytest.fixture(scope="function")
@@ -38,7 +46,7 @@ def client(db_session):
         try:
             yield db_session
         finally:
-            db_session.close()
+            pass
 
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:

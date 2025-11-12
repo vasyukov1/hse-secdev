@@ -1,11 +1,4 @@
-from fastapi.testclient import TestClient
-
-from app.main import app
-
-client = TestClient(app)
-
-
-def test_rfx7807_format_not_found():
+def test_rfx7807_format_not_found(client):
     """Test that 404 errors follow RFC 7807 format"""
     response = client.get("/media/00000000-0000-0000-0000-000000000000")
 
@@ -24,7 +17,7 @@ def test_rfx7807_format_not_found():
     assert len(data["correlation_id"]) == 36
 
 
-def test_rfc7807_format_validation_error():
+def test_rfc7807_format_validation_error(client):
     """Test that validation errors follow RFC 7807 format"""
     response = client.post(
         "/media", json={"name": "", "year": 1799, "kind": "film", "status": "planned"}
@@ -46,7 +39,7 @@ def test_rfc7807_format_validation_error():
         assert any(expected_error in msg for msg in error_messages)
 
 
-def test_url_validation_success():
+def test_url_validation_success(client):
     """Test valid URL passes validation"""
     response = client.post(
         "/media",
@@ -63,7 +56,7 @@ def test_url_validation_success():
     assert response.status_code == 201
 
 
-def test_url_validation_invalid_scheme():
+def test_url_validation_invalid_scheme(client):
     """Test invalid URL scheme is rejected"""
     response = client.post(
         "/media",
@@ -82,7 +75,7 @@ def test_url_validation_invalid_scheme():
     assert "URL must start with http:// or https://" in str(data)
 
 
-def test_url_validation_internal_host():
+def test_url_validation_internal_host(client):
     """Test internal URLs are rejected"""
     response = client.post(
         "/media",
@@ -101,7 +94,7 @@ def test_url_validation_internal_host():
     assert "Internal URLs are not allowed" in str(data)
 
 
-def test_url_validation_too_long():
+def test_url_validation_too_long(client):
     """Test overly long URLs are rejected"""
     long_url = "https://example.com/" + "a" * 2000
     response = client.post(
