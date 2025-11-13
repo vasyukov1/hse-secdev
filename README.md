@@ -1,5 +1,7 @@
 # Media Wishlist Project
 
+[![CI](https://github.com/vasyukov1/hse-secdev/actions/workflows/ci.yml/badge.svg)](https://github.com/vasyukov1/hse-secdev/actions/workflows/ci.yml)
+
 Репозиторий проекта "Media Wishlist" in course HSE SecDev 2025.
 
 ## Быстрый старт

@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ci-artifacts-*
+          path: artifacts/
+
+      - name: Display artifact info
+        run: |
+          echo "Artifacts available for release:"
+          find artifacts/ -type f -name "*.html" -o -name "*.xml" -o -name "*.tar" | head -10
+          ls -la artifacts/
+
+      - name: Create release summary
+        run: |
+          echo "## Release ${{ github.ref_name }}" > release-summary.md
+          echo "### Test Coverage" >> release-summary.md
+          echo "- HTML Coverage Report: [View](artifacts/reports/coverage-html/index.html)" >> release-summary.md
+          echo "- JUnit Test Results: [Download](artifacts/reports/junit.xml)" >> release-summary.md
+          echo "### Security" >> release-summary.md
+          echo "- Docker Image: secdev-app:${{ github.sha }}" >> release-summary.md
+          echo "- Built with non-root user" >> release-summary.md
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets-${{ github.ref_name }}
+          path: |
+            release-summary.md
+            artifacts/

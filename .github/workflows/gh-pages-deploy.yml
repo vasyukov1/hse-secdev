@@ -1,0 +1,95 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**', 'README.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+
+      - name: Build documentation
+        run: |
+          echo "Building documentation..."
+          mkdir -p _site
+
+          # Создаем главную страницу
+          cat > _site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Media Wishlist Documentation</title>
+              <meta charset="utf-8">
+              <style>
+                  body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                  .card { border: 1px solid #ddd; padding: 20px; margin: 10px 0; border-radius: 5px; }
+                  .badge { background: #007acc; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px; }
+              </style>
+          </head>
+          <body>
+              <h1>🎬 Media Wishlist Project</h1>
+              <p>Secure media wishlist application with CI/CD pipeline</p>
+
+              <div class="card">
+                  <h2>📖 Documentation</h2>
+                  <ul>
+                      <li><a href="https://github.com/${{ github.repository }}">GitHub Repository</a></li>
+                      <li><a href="https://github.com/${{ github.repository }}/blob/main/README.md">README</a></li>
+                      <li><a href="https://github.com/${{ github.repository }}/tree/main/docs">Architecture Documents</a></li>
+                  </ul>
+              </div>
+
+              <div class="card">
+                  <h2>🚀 Deployment Status</h2>
+                  <p><span class="badge">Staging</span> Ready for testing</p>
+                  <p><span class="badge">Production</span> Manual approval required</p>
+              </div>
+
+              <div class="card">
+                  <h2>🔧 API Endpoints</h2>
+                  <ul>
+                      <li><code>GET /health</code> - Health check</li>
+                      <li><code>GET /media</code> - List media items</li>
+                      <li><code>POST /media</code> - Create media item</li>
+                  </ul>
+              </div>
+
+              <footer>
+                  <p>Last updated: $(date)</p>
+              </footer>
+          </body>
+          </html>
+          EOF
+
+          # Копируем существующую документацию
+          if [ -d "docs" ]; then
+            cp -r docs/* _site/ 2>/dev/null || true
+          fi
+
+          echo "Documentation built successfully"
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: '_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
