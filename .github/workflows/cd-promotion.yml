@@ -68,7 +68,6 @@ jobs:
     needs: build-and-test
     environment:
       name: staging
-      url: https://staging.example.com
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
 
     steps:
@@ -89,7 +88,6 @@ jobs:
           echo "Database URL: ${{ secrets.STAGING_DATABASE_URL != '' && '***SET***' || 'NOT SET' }}"
           echo "API Key: ${{ secrets.STAGING_API_KEY != '' && '***SET***' || 'NOT SET' }}"
 
-          # Эмуляция деплоя
           echo "Loading Docker image..."
           docker load -i artifacts/$DOCKER_IMAGE.tar
 
@@ -98,7 +96,7 @@ jobs:
           echo "Health checks configured"
 
           echo "Staging deployment completed successfully"
-          echo "Application should be available at: ${{ environment.url }}"
+          echo "Application should be available at: https://staging.example.com"
 
       - name: Run staging smoke tests
         run: |
@@ -132,7 +130,6 @@ jobs:
     needs: [build-and-test, deploy-staging]
     environment:
       name: production
-      url: https://app.example.com
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
 
     steps:
@@ -201,4 +198,4 @@ jobs:
       - name: Notify success
         run: |
           echo "Production deployment completed successfully!"
-          echo "Application is live at: ${{ environment.url }}"
+          echo "Application is live at: https://app.example.com"
