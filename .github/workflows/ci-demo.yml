@@ -1,0 +1,29 @@
+name: CI Demo - Multi Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: Environment to deploy to
+        options:
+        - dev
+        - staging
+        - production
+        required: true
+        default: dev
+
+jobs:
+  deploy-demo:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show environment secrets
+        run: |
+          echo "Deploying to ${{ github.event.inputs.environment }} environment"
+          echo "Database URL: ${{ secrets.DATABASE_URL != '' && '***SET***' || 'NOT SET' }}"
+          echo "API Key: ${{ secrets.API_KEY != '' && '***SET***' || 'NOT SET' }}"
