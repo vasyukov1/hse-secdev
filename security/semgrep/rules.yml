@@ -1,0 +1,28 @@
+rules:
+  # Поиск использования небезопасного вывода в FastAPI
+  - id: python-fastapi-html-response-warning
+    languages: [python]
+    message: "Обнаружен прямой вывод пользовательских данных в HTMLResponse. Убедитесь, что переменная ($VAR) правильно экранирована, чтобы предотвратить XSS (CWE-79)."
+    severity: WARNING
+    patterns:
+      - pattern: |
+          from fastapi.responses import HTMLResponse
+          ...
+          HTMLResponse($VAR)
+    metadata:
+      category: security
+      cwe: "CWE-79: Cross-site Scripting"
+
+  # Использование небезопасного модуля `subprocess`
+  - id: python-subprocess-shell-true
+    languages: [python]
+    message: "Использование shell=True в модуле subprocess опасно. Может привести к RCE (CWE-78)."
+    severity: ERROR
+    patterns:
+      - pattern: |
+          subprocess.$FUNC(..., shell=True, ...)
+      - pattern-not: |
+          subprocess.$FUNC(..., shell=False, ...)
+    metadata:
+      category: security
+      cwe: "CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"
