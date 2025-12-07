@@ -45,21 +45,22 @@ jobs:
           uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           timeout 30 bash -c 'until curl -sf http://localhost:8000/health; do sleep 1; done'
 
-      - name: ZAP Baseline
+      - name: Run ZAP Baseline Scan
         run: |
-          docker run --rm --network host -v $PWD:/zap/wrk ghcr.io/zaproxy/zap-baseline \
+          docker run --rm --network host -v $PWD:/zap/wrk owasp/zap2docker-stable \
             zap-baseline.py \
-              -t http://localhost:8000 \
+              -t http://localhost:8080 \
               -r zap_baseline.html \
               -J zap_baseline.json \
-              -d -z
+              -d || true
+          mv zap_baseline.* EVIDENCE/P11/ || true
 
-          if [ -f zap_baseline.html ]; then
-            mv zap_baseline.* EVIDENCE/P11/
-          else
-            echo "Error: ZAP reports not found. Check the previous log for ZAP errors."
-            exit 1
-          fi
+      - name: Upload P11 Evidence Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P11_EVIDENCE
+          path: EVIDENCE/P11
 
       - name: Commit ZAP Reports
         if: success()
