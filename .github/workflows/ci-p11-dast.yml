@@ -47,7 +47,7 @@ jobs:
 
       - name: ZAP Baseline
         run: |
-          docker run --rm --network host -v $PWD:/zap/wrk owasp/zap2docker-stable \
+          docker run --rm --network host -v $PWD:/zap/wrk ghcr.io/zaproxy/zap-baseline \
             zap-baseline.py \
               -t http://localhost:8000 \
               -r zap_baseline.html \
@@ -55,10 +55,9 @@ jobs:
               -d -z
 
           if [ -f zap_baseline.html ]; then
-            echo "ZAP reports generated successfully. Moving files."
             mv zap_baseline.* EVIDENCE/P11/
           else
-            echo "ZAP reports (zap_baseline.html/json) were NOT generated. Check ZAP output above."
+            echo "Error: ZAP reports not found. Check the previous log for ZAP errors."
             exit 1
           fi
 
