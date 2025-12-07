@@ -1,0 +1,16 @@
+title = "hse-secdev default gitleaks config"
+
+[extend]
+
+[allowlist]
+description = "Ignore non-sensitive patterns and evidence folder"
+
+paths = [
+    '''EVIDENCE/.*''',
+    '''\.(md|txt|toml|yaml)$''',
+]
+
+regexes = [
+    '''ghp\_[0-9a-zA-Z]{36}''',
+    '''example_api_key_123''',
+]
