@@ -1,0 +1,7 @@
+quiet: false
+compact: true
+framework:
+  - dockercompose
+  - dockerfile
+
+skip-check: []
