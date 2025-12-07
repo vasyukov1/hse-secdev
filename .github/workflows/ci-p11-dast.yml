@@ -11,7 +11,7 @@ on:
       - "requirements.txt"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -49,15 +49,31 @@ jobs:
         run: |
           docker run --rm --network host -v $PWD:/zap/wrk owasp/zap2docker-stable \
             zap-baseline.py \
-              -t http://localhost:8080 \
+              -t http://localhost:8000 \
               -r zap_baseline.html \
               -J zap_baseline.json \
-              -d || true
-          mv zap_baseline.* EVIDENCE/P11/ || true
+              -d -z
 
-      - name: Upload P11 evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: P11_EVIDENCE
-          path: EVIDENCE/P11
+          if [ -f zap_baseline.html ]; then
+            echo "ZAP reports generated successfully. Moving files."
+            mv zap_baseline.* EVIDENCE/P11/
+          else
+            echo "ZAP reports (zap_baseline.html/json) were NOT generated. Check ZAP output above."
+            exit 1
+          fi
+
+      - name: Commit ZAP Reports
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Проверяем, есть ли что-то новое для коммита
+          git add EVIDENCE/P11/zap_baseline.*
+          if git diff --staged --quiet; then
+            echo "No new ZAP reports to commit."
+          else
+            git commit -m "P11: Add ZAP baseline reports"
+            git push
+            echo "ZAP reports committed and pushed."
+          fi
