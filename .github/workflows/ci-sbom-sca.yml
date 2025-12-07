@@ -1,0 +1,84 @@
+name: Security - SBOM & SCA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - p09-sbom-sca
+    paths:
+      - "**/*.py"
+      - "requirements*.txt"
+      - ".github/workflows/ci-sbom-sca.yml"
+      - "policy/waivers.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sbom_sca:
+    name: Generate SBOM & Scan Vulns
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Create Evidence Directory
+        run: mkdir -p EVIDENCE/P09
+
+      # Генерация SBOM
+      - name: Generate SBOM (Syft)
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: EVIDENCE/P09/sbom.json
+
+      # Сканирование уязвимостей (SCA) используя SBOM
+      - name: Scan for Vulnerabilities (Grype)
+        uses: anchore/scan-action@v3
+        id: scan
+        with:
+          sbom: EVIDENCE/P09/sbom.json
+          fail-build: false
+          output-format: json
+          severity-cutoff: low
+        continue-on-error: true
+
+      # Сохранение отчета Grype
+      - name: Save Grype JSON Report
+        run: |
+          cp ${{ steps.scan.outputs.json }} EVIDENCE/P09/sca_report.json
+
+      # Генерация Summary
+      - name: Generate Summary Markdown
+        run: |
+          echo "# SCA Vulnerability Summary" > EVIDENCE/P09/sca_summary.md
+          echo "Date: $(date)" >> EVIDENCE/P09/sca_summary.md
+          echo "" >> EVIDENCE/P09/sca_summary.md
+
+          # Группировка по severity через jq
+          if [ -f EVIDENCE/P09/sca_report.json ]; then
+            cat EVIDENCE/P09/sca_report.json | jq -r '
+              [.matches[].vulnerability.severity]
+              | group_by(.)
+              | map("- **" + .[0] + "**: " + (length|tostring))
+              | .[]' >> EVIDENCE/P09/sca_summary.md
+          else
+            echo "Report not found." >> EVIDENCE/P09/sca_summary.md
+          fi
+
+          cat EVIDENCE/P09/sca_summary.md >> $GITHUB_STEP_SUMMARY
+
+      # Загрузка артефактов в GitHub
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: P09-Evidence
+          path: EVIDENCE/P09/

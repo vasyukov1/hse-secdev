@@ -1,89 +1,90 @@
-name: CI (minimal)
+name: CI
 
 on:
   push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'SECURITY.md'
+      - '.gitignore'
   pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'SECURITY.md'
+      - '.gitignore'
 
-env:
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
-  TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  test:
+  lint-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      timeout-minutes: 2
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+      timeout-minutes: 2
 
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-dev.txt
-          pip install coverage pytest-html
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt -r requirements-dev.txt
+      timeout-minutes: 3
 
-      - name: Lint
-        run: |
-          ruff check . --output-format=github > reports/ruff-report.txt || true
-          black --check . > reports/black-report.txt 2>&1 || true
-          isort --check-only . > reports/isort-report.txt 2>&1 || true
+    - name: Check code formatting with Black
+      run: |
+        black --check .
+      timeout-minutes: 2
 
-      - name: Tests with coverage
-        env:
-          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
-          TESTING: "true"
-        run: |
-          mkdir -p reports
-          # Run tests with coverage and HTML report
-          pytest -q --maxfail=1 --disable-warnings \
-            --junitxml=reports/junit.xml \
-            --html=reports/pytest-report.html \
-            --self-contained-html \
-            --cov=app \
-            --cov-report=html:reports/coverage-html \
-            --cov-report=xml:reports/coverage.xml
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only .
+      timeout-minutes: 2
 
-      - name: Build Docker image
-        run: |
-          docker build -t secdev-app:${{ github.sha }} .
-          docker save secdev-app:${{ github.sha }} -o secdev-app.tar
+    - name: Lint with ruff
+      run: |
+        ruff check .
+      timeout-minutes: 2
 
-      - name: Security scan report
-        run: |
-          echo "## Security Scan Summary" > reports/security-scan.md
-          echo "### Image Info" >> reports/security-scan.md
-          docker images secdev-app:${{ github.sha }} >> reports/security-scan.md
-          echo "" >> reports/security-scan.md
-          echo "### Non-root User Check" >> reports/security-scan.md
-          docker run --rm secdev-app:${{ github.sha }} id -u >> reports/security-scan.md
+    - name: Run tests with pytest
+      run: |
+        mkdir -p reports
+        pytest -q --junitxml=reports/junit.xml --cov=app --cov-report=xml:reports/coverage.xml --cov-report=html:reports/coverage-html
+      timeout-minutes: 5
 
-      - name: Upload all artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-artifacts-${{ github.sha }}
-          path: |
-            reports/
-            secdev-app.tar
-          retention-days: 30
+    - name: Upload test artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-reports
+        path: |
+          reports/
+        retention-days: 7
+      timeout-minutes: 2

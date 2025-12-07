@@ -1,0 +1,15 @@
+# policy/waivers.yml
+# Исключения для сканирования уязвимостей (SCA)
+
+waivers:
+  - id: "EXAMPLE-CVE-2025-0001"
+    package: "example-package"
+    version: "1.0.0"
+    vulnerability_ids: ["CVE-2025-0001"]
+    severity: "High"
+    reason: "Example waiver - replace with actual vulnerabilities found"
+    justification: "This is a demonstration waiver. In real scenario, provide technical justification why this vulnerability is acceptable."
+    affected_paths: []
+    expiry_date: "2025-12-07"
+    approved_by: "durov@telegram.org"
+    ticket: "lol"
